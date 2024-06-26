@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: i18-bluesky
+  title: i18-bluesky
+  description: Plans and devices for the DLS beamline i18
+spec:
+  type: documentation
+  lifecycle: experimental
+  owner: group:default/daq
