@@ -18,6 +18,7 @@ def align_beamline() -> MsgGenerator:
     # first, we lookup table - calibrate the DCM
     # - measure foil, etc Fe, Mg, then absorption spectrum
     # then the xanes absorption - then derivative, argmax of the first derivative
+    # https://www.geeksforgeeks.org/python-sympy-derivative-method/
     # then Bragg offset is adjusted to match the calibrated value
 
     # second the idgap lookup tables
