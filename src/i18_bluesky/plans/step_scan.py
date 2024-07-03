@@ -1,0 +1,2 @@
+class StepScan:
+    pass
