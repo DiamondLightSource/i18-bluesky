@@ -10,24 +10,32 @@ from dodal.devices.aperturescatterguard import ApertureScatterguard
 from dodal.devices.dcm import DCM
 from dodal.devices.i22.dcm import CrystalMetadata
 from dodal.devices.undulator import Undulator
+from dodal.devices.xspress3.xspress3 import Xspress3
 from dodal.utils import BeamlinePrefix, get_beamline_name
 from doddal.devices.focusingmirror import FocusingMirror
 from ophyd_async.core import StandardDetector
 from ophyd_async.epics.signal import epics_signal_rw
 
 BL = get_beamline_name("i18")
-
-monochromator = DCM()
+BEAMLINE_PREFIX = BeamlinePrefix(BL).beamline_prefix
 
 
 class IonChamber(StandardDetector):
     pass
 
 
-t1x = IonChamber(name="t1x")
-t1y = IonChamber(name="t1y")
+monochromator = DCM(prefix=f"{BEAMLINE_PREFIX}-MO-DCSM-01:")
+gap = monochromator.perp_in_mm
+x = Xspress3(name="x", prefix=f"{BEAMLINE_PREFIX}-EA-XSP-02:")
+# todo add cam channel - EA-XSP-02:CAM:PortName_RBV
+
+u = Undulator(name="u", prefix="SR18I-MO-SERVC-01:BLGAMPTR")
+t1x = IonChamber(name="t1x", prefix=f"{BEAMLINE_PREFIX}-MO-TABLE-01:X")
+t1y = IonChamber(name="t1y", prefix=f"{BEAMLINE_PREFIX}-MO-TABLE-01:Y")
 t1theta = IonChamber(name="t1theta")
 # note the theta variant is for tomography
+
+pinhole = ApertureScatterguard()
 
 
 def dcm(
@@ -41,9 +49,10 @@ def dcm(
         wait_for_connection,
         fake_with_ophyd_sim,
         bl_prefix=False,
-        motion_prefix=f"{BeamlinePrefix(BL).beamline_prefix}-MO-DCM-01:",
-        temperature_prefix=f"{BeamlinePrefix(BL).beamline_prefix}-DI-DCM-01:",
+        motion_prefix=f"{BEAMLINE_PREFIX}-MO-DCM-01:",  # todo change this
+        temperature_prefix=f"{BEAMLINE_PREFIX}-DI-DCM-01:",  # todo change this
         crystal_1_metadata=CrystalMetadata(
+            # todo add Germanium
             usage="Bragg",
             type="silicon",
             reflection=(1, 1, 1),
@@ -65,7 +74,7 @@ def vfm(
     return device_instantiation(
         FocusingMirror,
         "vfm",
-        "-OP-KBM-01:VFM:",
+        "-OP-KBM-01:VFM:",  # that is ok and should work at i18 too
         wait_for_connection,
         fake_with_ophyd_sim,
     )
@@ -92,9 +101,6 @@ class KBMirror:
     horizontal_bend2 = epics_signal_rw()
 
 
-pinhole = ApertureScatterguard()
-
-
 def calculate_derivative_maxima(data: np.ndarray) -> List[float]:
     x = sp.Symbol("x")
     y = sp.interpolating_spline(3, sp.lambdify(x, data))
@@ -111,6 +117,7 @@ class BeamlineAlignmentParams:
 
 def calibrate_monochromator() -> MsgGenerator:
     yield from bps.mv(monochromator, "calibrate_dcm")
+    # todo this measure foil makes no sense at the moment
     yield from bps.mv(monochromator, "measure_foil", "Fe")
     yield from bps.mv(monochromator, "measure_foil", "Mg")
 
@@ -125,8 +132,8 @@ def adjust_bragg_offset_using_absorption_spectrum(
 
 def scan_undulator_gap_within_energy_range(energy_range: np.ndarray) -> MsgGenerator:
     for energy in energy_range:
-        yield from bps.mv(Undulator.gap, energy)
-        yield from bps.trigger_and_read([Undulator])
+        yield from bps.mv(u.gap, energy)
+        yield from bps.trigger_and_read([u])
 
 
 def centralize_pinhole() -> MsgGenerator:
@@ -181,12 +188,12 @@ def align_beamline(params: BeamlineAlignmentParams) -> MsgGenerator:
     absorption_spectrum = yield from bps.rd(monochromator.absorption_spectrum)
     yield from adjust_bragg_offset_using_absorption_spectrum(absorption_spectrum)
 
-    yield from bps.mv(Undulator, "load_lookup_table")
+    yield from bps.mv(u, "load_lookup_table")
 
     energy_range = np.linspace(10, 15, num=10)
     yield from scan_undulator_gap_within_energy_range(energy_range)
 
-    gap_positions = yield from bps.rd(Undulator.gap_positions)
+    gap_positions = yield from bps.rd(u.gap_positions)
     quadratic_fit = np.polyfit(energy_range, gap_positions, 2)
     np.save("gap_lookup_table.npy", quadratic_fit)
 
