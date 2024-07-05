@@ -19,6 +19,15 @@ from ophyd_async.epics.signal import epics_signal_rw
 BL = get_beamline_name("i18")
 BEAMLINE_PREFIX = BeamlinePrefix(BL).beamline_prefix
 
+# todo the beamline script locations
+#  /dls_sw/i18/scripts/beamlinestuff/i18scans/Lookuptabledcm_i0.py
+#  /dls_sw/i18/scripts/beamlinestuff/i18scans/oldscans/dcm_undulator_lookup.py
+# lutFile = "/dls_sw/i18/software/gda/config/lookupTables/Si111/lookuptable_harmonic7.txt"
+# bragg idgap
+# Units   Deg     mm
+# 17.397 6.00900
+# 17.195 6.07499
+
 
 class IonChamber(StandardDetector):
     pass
