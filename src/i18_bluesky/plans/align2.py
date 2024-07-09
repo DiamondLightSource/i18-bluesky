@@ -11,13 +11,9 @@ from dodal.devices.dcm import DCM
 from dodal.devices.i22.dcm import CrystalMetadata
 from dodal.devices.undulator import Undulator
 from dodal.devices.xspress3.xspress3 import Xspress3
-from dodal.utils import BeamlinePrefix, get_beamline_name
 from doddal.devices.focusingmirror import FocusingMirror
 from ophyd_async.core import StandardDetector
 from ophyd_async.epics.signal import epics_signal_rw
-
-BL = get_beamline_name("i18")
-BEAMLINE_PREFIX = BeamlinePrefix(BL).beamline_prefix
 
 # todo the beamline script locations
 #  /dls_sw/i18/scripts/beamlinestuff/i18scans/Lookuptabledcm_i0.py
