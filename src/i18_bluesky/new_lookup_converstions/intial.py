@@ -135,5 +135,25 @@ def save_record_to_redis(redis_client, record):
     redis_client.set(record.element, record.to_json())
 
 
+def get_quadratic_curve(redis_client, harmonic: int, element: str, edge: str):
+    # Retrieve the record from Redis
+    record_json = redis_client.get(element)
+    if not record_json:
+        raise ValueError(f"No record found for element: {element}")
+
+    record = Record.from_json(record_json)
+
+    # Verify if the record matches the harmonic, element, and edge
+    if record.harmonic != harmonic or record.element != element or record.edge != edge:
+        raise ValueError(
+            f"Record does not match the specified harmonic ({harmonic}), element ({element}), or edge ({edge})"
+        )
+
+    # Get the regression function
+    regression_func = record.get_regression_function()
+
+    return regression_func
+
+
 if __name__ == "__main__":
     asyncio.run(main())
