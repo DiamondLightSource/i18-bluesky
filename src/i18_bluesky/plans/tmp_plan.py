@@ -5,6 +5,7 @@ from typing import Set
 from aioredis import Redis
 from bluesky import plan_stubs as bps
 from bluesky import MsgGenerator
+from i18_bluesky.redis_client import RedisClient
 
 class Readable:
     pass
@@ -15,14 +16,12 @@ class TetrammDetector(Readable):
 DEFAULT_DETECTORS = set()
 DEFAULT_BASELINE_MEASUREMENTS = set()
 
+
 async def fetch_from_redis(key: str) -> str:
-    """Asynchronous function to fetch data from Redis."""
-    redis = Redis()
-    try:
-        value = await redis.get(key)
-        return value.decode() if value else None
-    finally:
-        await redis.close()
+    redis = await RedisClient.get_instance()
+    value = await redis.get(key)
+    return value.decode() if value else None
+
 
 @attach_data_session_metadata_decorator()
 def check_detectors_for_stopflow(
@@ -34,7 +33,10 @@ def check_detectors_for_stopflow(
     stopflow plan by default.
     """
 
-    # Asynchronously fetch some value from Redis
+    # Ensure the Redis client is initialized at the start of the plan
+    asyncio.run(RedisClient.get_instance())
+
+    # Example use: fetch a value from Redis
     redis_key = "some_key"
     redis_value = asyncio.run(fetch_from_redis(redis_key))
     print(f"Fetched from Redis: {redis_value}")
