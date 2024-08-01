@@ -10,10 +10,20 @@ Plans and devices for the DLS beamline i18
 This is where you should write a short paragraph that describes what your module does,
 how it does it, and why people should use it.
 
-Source          | <https://github.com/DiamondLightSource/i18-bluesky>
-:---:           | :---:
-PyPI            | `pip install i18-bluesky`
-Releases        | <https://github.com/DiamondLightSource/i18-bluesky/releases>
+table again, t1 theta and d7bdiode
+MO table is ok
+
+pinhole PVs?  -AL-APTR-01:TEMP1
+
+diode reading and also DRAIN
+diode is ok, there are A and B variants
+motors A and B
+camera not used
+
+|  Source  |     <https://github.com/DiamondLightSource/i18-bluesky>      |
+| :------: | :----------------------------------------------------------: |
+|   PyPI   |                  `pip install i18-bluesky`                   |
+| Releases | <https://github.com/DiamondLightSource/i18-bluesky/releases> |
 
 This is where you should put some images or code snippets that illustrate
 some relevant examples. If it is a library then you might put some
