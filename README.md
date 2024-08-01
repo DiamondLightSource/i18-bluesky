@@ -13,7 +13,12 @@ how it does it, and why people should use it.
 table again, t1 theta and d7bdiode
 MO table is ok
 
-pinhole PVs?  -AL-APTR-01:TEMP1
+    16 channels Xspress3 detector
+        -EA-XPS-02:CAM:MaxSizeX_RBV
+      also ArraySize
+      also :CONNECTED
+
+pinhole PVs? -AL-APTR-01:TEMP1
 
 diode reading and also DRAIN
 diode is ok, there are A and B variants
