@@ -1,19 +1,29 @@
 from typing import Any, List, Mapping, Optional
-from bluesky.protocols import Movable, Readable
-from dls_bluesky_core.core import MsgGenerator
+
 import bluesky.plans as bp
-from ophyd.sim import SynAxis
+from dls_bluesky_core.core import MsgGenerator
+from ophyd_async.core.detector import StandardDetector
+from ophyd_async.epics.motion import Motor
+
 """
 Dictionary of scan arguments from motor scan_args (start, stop, steps)
 """
-def make_args(motor, scan_args, prefix="") :
-    return {"motor"+prefix: motor, "start"+prefix: scan_args[0], "stop"+prefix: scan_args[1], "steps"+prefix: int(scan_args[2])}
+
+
+def make_args(motor, scan_args, prefix=""):
+    return {
+        "motor" + prefix: motor,
+        "start" + prefix: scan_args[0],
+        "stop" + prefix: scan_args[1],
+        "steps" + prefix: int(scan_args[2]),
+    }
+
 
 def step_scan(
-    detectors: List[Readable],
-    motor: Movable,
+    detectors: List[StandardDetector],
+    motor: Motor,
     scan_args: List[object],
-    metadata: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None,
 ) -> MsgGenerator:
     """
     Scan wrapping `bp.scan`
@@ -34,18 +44,19 @@ def step_scan(
         },
         "plan_name": "step_scan",
         "shape": [1],
-        **(metadata or {})
+        **(metadata or {}),
     }
     yield from bp.scan(detectors, *args.values(), md=_md_)
 
+
 def grid_scan(
-    detectors: List[Readable],
-    motor1: Movable,
+    detectors: List[StandardDetector],
+    motor1: Motor,
     scan_args1: List[object],
-    motor2: Movable,
+    motor2: Motor,
     scan_args2: List[object],
     metadata: Optional[Mapping[str, Any]] = None,
-    snake_axes: Optional[bool] = None
+    snake_axes: Optional[bool] = None,
 ) -> MsgGenerator:
     """
     Scan wrapping `bp.grid_scan'
@@ -65,11 +76,13 @@ def grid_scan(
         "plan_args": {
             "detectors": list(map(repr, detectors)),
             "*args1": {k: repr(v) for k, v in args1.items()},
-            "*args2": {k: repr(v) for k, v in args2.items()}
+            "*args2": {k: repr(v) for k, v in args2.items()},
         },
         "plan_name": "step_scan",
         "shape": [1],
-        **(metadata or {})
+        **(metadata or {}),
     }
 
-    yield from bp.grid_scan(detectors, *args1.values(), *args2.values(), md=_md_, snake_axes=snake_axes)
+    yield from bp.grid_scan(
+        detectors, *args1.values(), *args2.values(), md=_md_, snake_axes=snake_axes
+    )
