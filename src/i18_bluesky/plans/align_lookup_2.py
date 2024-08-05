@@ -7,6 +7,11 @@ import sympy as sp
 from bluesky.devices.monochromator import DCM
 from dls_bluesky_core.core import MsgGenerator, inject
 
+monochromator = inject("monochromator")
+undulator = inject("undulator")
+pinhole = inject("pinhole")
+KBMirror = inject("kb_mirror")
+
 
 def calculate_derivative_maxima(data: np.ndarray) -> List[float]:
     x = sp.Symbol("x")
@@ -68,8 +73,9 @@ def focus_kb_mirror_until_tolerance(
         t1x = yield from bps.rd(KBMirror.t1x)
         t1y = yield from bps.rd(KBMirror.t1y)
         t1theta = yield from bps.rd(KBMirror.theta)
+        assert t1x is int and t1y is int and t1theta is int
         yield from bps.trigger_and_read([t1x, t1y, t1theta])
-        absorption_profile = yield from bps.rd(t1x.absorption_profile)
+        absorption_profile = yield from bps.rd(t1x, "absorption_profile")
 
         beam_size = np.std(absorption_profile)
         if beam_size < tolerance:
@@ -95,7 +101,6 @@ def focus_kb_mirror_until_tolerance(
     yield from bps.mv(pinhole, "final_position")
 
 
-@inject
 def align_beamline(
     undulator, monochromator, params: BeamlineAlignmentParams
 ) -> MsgGenerator:
