@@ -1,19 +1,13 @@
-
 import asyncio
 from typing import Set
 
+from blueskt.devices import TetrammDetector
 from bluesky import MsgGenerator
 from bluesky import plan_stubs as bps
+from bluesky.protocols import Readable
 from dodal.plans.data_session_metadata import attach_data_session_metadata_decorator
 
 from i18_bluesky.redis_client import RedisClient
-
-
-class Readable:
-    pass
-
-class TetrammDetector(Readable):
-    pass
 
 DEFAULT_DETECTORS = set()
 DEFAULT_BASELINE_MEASUREMENTS = set()
@@ -26,7 +20,7 @@ async def fetch_from_redis(key: str) -> str:
 
 
 @attach_data_session_metadata_decorator()
-def check_detectors_for_stopflow(
+def check_detectors(
     num_frames: int = 1,
     devices: Set[Readable] = DEFAULT_DETECTORS | DEFAULT_BASELINE_MEASUREMENTS,
 ) -> MsgGenerator:
