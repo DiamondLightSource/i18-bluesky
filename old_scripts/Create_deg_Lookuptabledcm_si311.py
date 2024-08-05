@@ -30,13 +30,13 @@ def scangap(start_gap,stop_gap,step_gap):
 		#print 'i gap',i,('%.3f' %currentgap),('%.3f' %multict.getPosition()[0])
 		currentgap=currentgap+step_gap
 	return xdata, ydata
-	
+
 #
 #
 # Fit the data from the gap scan with a gaussian and return
 # the peak position
 #
-#	
+#
 def fitdata(xdata,ydata):
 	# Find the min and max of the data set
 	maxcount=0
@@ -44,7 +44,7 @@ def fitdata(xdata,ydata):
 	maxval=ydata[0]
 	minval= 10000000000000.0
 	ysize=len(ydata)
-	for i in range(ysize):	
+	for i in range(ysize):
 		if(ydata[i]>maxval):
 			maxval=ydata[i]
 			maxcount=i
@@ -53,13 +53,13 @@ def fitdata(xdata,ydata):
 			mincount=i
 	for i in range(ysize):
 		ydata[i]=ydata[i]-minval
-	for i in range(ysize):	
+	for i in range(ysize):
 		ydata[i]=ydata[i]/maxval
-		
+
 	gauss = BGGaussian1D([ydata[maxcount]/100.0,xdata[maxcount],0.005,minval])
 	#gauss=BGAsymmetricGaussian1D([ydata[maxcount]/100.0,xdata[maxcount],0.005,0.005,minval])
 	gauss.getParameter("area").setLowerLimit(1.0E-5)
-	gauss.getParameter("area").setUpperLimit(0.1)     
+	gauss.getParameter("area").setUpperLimit(0.1)
 	gauss.getParameter("position").setLowerLimit(xdata[0])
 	gauss.getParameter("position").setUpperLimit(xdata[ysize-1])
 	gauss.getParameter("sigma").setLowerLimit(0.0005)
@@ -78,7 +78,7 @@ def fitdata(xdata,ydata):
 	minpack.setMaxNoOfEvaluations(150000)
 	minpack.reset()
 	minpack.optimize()
-	bestValues=minpack.getBest()	
+	bestValues=minpack.getBest()
 	print 'maxcount',xdata[maxcount]
 	print 'best values',bestValues,minpack.getMinimum()
 	return bestValues,xdata[maxcount]
@@ -86,7 +86,7 @@ def fitdata(xdata,ydata):
 #
 # Script to regenerate a lookup table for a given harmonic
 #
-angleStart=33020 
+angleStart=33020
 angleStop= 30000
 angleStep=-200
 gaprange=0.040
@@ -113,7 +113,7 @@ lookup = finder.find("lookup_name_provider_Si311")
 print 'Harmonic set to ',lookup.getConverterName()
 
 #
-# Selection mode 
+# Selection mode
 # 0 fit the curve with a gaussian and pick the centre
 # 1 use the peak position
 selectionMode=1
@@ -133,7 +133,7 @@ print >>fod,"Bragg\tGap"
 for j in range(angleStart,angleStop,angleStep):
 	#convert to degrees
 	i = j / 1000.0
-	
+
 	# Move to position
 	pos sc_comboDCM_d_Si311 i
 	sleep(2)

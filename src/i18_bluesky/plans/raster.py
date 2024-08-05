@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import bluesky.plan_stubs as bps
 from bluesky import RunEngine
