@@ -45,14 +45,17 @@ def derivative_max(data):
     argmax = sp.solve(sp.Eq(derivative, 0), x)
     return argmax
 
+
 @dataclass
 class BeamlineAlignmentParams:
     target_energy: Optional[float] = 12.0
     tolerance: Optional[float] = 0.1
 
+
 @inject
 def align_beamline(tolerance: float) -> MsgGenerator:
-    # first, we lookup table - calibratre the DCM - measure foil, etc Fe, Mg, then absorption spectrum
+    # first, we lookup table - calibratre the DCM -
+    # measure foil, etc Fe, Mg, then absorption spectrum
     # then the xanes absorption - then derivative, argmax of the first derivative
     # https://www.geeksforgeeks.org/python-sympy-derivative-method/
     # then Bragg offset is adjusted to match the calibrated value
@@ -69,9 +72,11 @@ def align_beamline(tolerance: float) -> MsgGenerator:
 
     yield from bps.mv(Undulator, "load_lookup_table")
 
-    # second the idgap lookup tables - for 10-15 points inside the energy range for this element
+    # second the idgap lookup tables -
+    # for 10-15 points inside the energy range for this element
     # we scan the gap fo the insertion devise, looking for the maximum
-    # then quadratic interpolation, written into the file, then GDA probably some interpolation
+    # then quadratic interpolation
+    # written into the file, then GDA probably some interpolation
     # TFG calculates frequency from current via voltage
     # so we need to load the panda configuration
     energy_range = np.linspace(10, 15, num=10)
@@ -84,7 +89,8 @@ def align_beamline(tolerance: float) -> MsgGenerator:
     quadratic_fit: np.ndarray[float] = np.polyfit(energy_range, gap_positions, 2)
     np.save("gap_lookup_table.npy", quadratic_fit)
 
-    # align the pinhole to reduce the scatter - 400 micron or 200 micron, then centralize it
+    # align the pinhole to reduce the scatter
+    # - 400 micron or 200 micron, then centralize it
     # usuallly not seen immediately
     # FocusingMirror misses curvature
     # preparation for the wire stage - check if we have any
@@ -105,7 +111,8 @@ def align_beamline(tolerance: float) -> MsgGenerator:
     yield from bps.mv(KBMirror.horizontal_bend1, "start_position")
     yield from bps.mv(KBMirror.horizontal_bend2, "start_position")
 
-    # visual comparison fo the derivative- best if without the tails, could be parametrized
+    # visual comparison fo the derivative- best if without the tails,
+    # could be parametrized
     # or 50 micron beam - and then defocus to get to that
     for i in range(10):
         yield from bps.mv(KBMirror.vertical_bend1, f"step_{i}")
