@@ -42,4 +42,4 @@ def align_beamline() -> MsgGenerator:
     # or 50 micron beam - and then defocus to get to that
 
     # golden plate with wires is moved by some other location
-    pass
+    yield from {}
