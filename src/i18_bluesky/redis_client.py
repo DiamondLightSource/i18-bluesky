@@ -1,5 +1,7 @@
-import aioredis
 from typing import Optional
+
+import aioredis
+
 
 class RedisClient:
     _instance: Optional[aioredis.Redis] = None

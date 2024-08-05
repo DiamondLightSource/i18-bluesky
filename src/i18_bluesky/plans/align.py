@@ -11,7 +11,6 @@ from dodal.devices.undulator import Undulator
 from ophyd_async.core import StandardDetector
 from ophyd_async.epics.signal import epics_signal_rw
 
-
 monochromator = DCM()
 
 
