@@ -15,17 +15,21 @@ from dls_bluesky_core.core import MsgGenerator
 
 
 def align_beamline() -> MsgGenerator:
-    # first, we lookup table - calibratre the DCM - measure foil, etc Fe, Mg, then absorption spectrum
+    # first, we lookup table - calibrate the DCM
+    # - measure foil, etc Fe, Mg, then absorption spectrum
     # then the xanes absorption - then derivative, argmax of the first derivative
     # then Bragg offset is adjusted to match the calibrated value
 
-    # second the idgap lookup tables - for 10-15 points inside the energy range for this element
+    # second the idgap lookup tables
+    # - for 10-15 points inside the energy range for this element
     # we scan the gap fo the insertion devise, looking for the maximum
-    # then quadratic interpolation, written into the file, then GDA probably some interpolation
+    # then quadratic interpolation, written into the file,
+    # then GDA probably some interpolation
     # TFG calculates frequency from current via voltage
     # so we need to load the panda configuration
 
-    # align the pinhole to reduce the scatter - 400 micron or 200 micron, then centralize it
+    # align the pinhole to reduce the scatter -
+    # 400 micron or 200 micron, then centralize it
     # usuallly not seen immediately
     # FocusingMirror misses curvature
     # preparation for the wire stage - check if we have any
@@ -38,7 +42,8 @@ def align_beamline() -> MsgGenerator:
     # to see the beam shape and the size
     # takes usually 30 minutes to go through focusing manually, 2-3 hours
 
-    # visual comparison fo the drviative - best if without the tails, could be parametrized
+    # visual comparison fo the drviative -
+    # best if without the tails, could be parametrized
     # or 50 micron beam - and then defocus to get to that
 
     # golden plate with wires is moved by some other location
