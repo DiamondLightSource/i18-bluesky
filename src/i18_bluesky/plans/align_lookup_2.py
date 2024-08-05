@@ -5,7 +5,7 @@ import bluesky.plan_stubs as bps
 import numpy as np
 import sympy as sp
 from bluesky.devices.monochromator import DCM
-from dls_bluesky_core.core import MsgGenerator, inject
+from dodal.common import MsgGenerator, inject
 
 monochromator = inject("monochromator")
 undulator = inject("undulator")
@@ -104,22 +104,24 @@ def focus_kb_mirror_until_tolerance(
 def align_beamline(
     undulator, monochromator, params: BeamlineAlignmentParams
 ) -> MsgGenerator:
-    yield from calibrate_monochromator()
+    yield from calibrate_monochromator(monochromator)
 
     yield from bps.mv(monochromator, "measure_absorption_spectrum")
     absorption_spectrum = yield from bps.rd(monochromator.absorption_spectrum)
-    yield from adjust_bragg_offset_using_absorption_spectrum(absorption_spectrum)
+    yield from adjust_bragg_offset_using_absorption_spectrum(
+        monochromator, absorption_spectrum
+    )
 
     yield from bps.mv(undulator, "load_lookup_table")
 
     energy_range = np.linspace(10, 15, num=10)
-    yield from scan_undulator_gap_within_energy_range(energy_range)
+    yield from scan_undulator_gap_within_energy_range(undulator, energy_range)
 
     gap_positions = yield from bps.rd(undulator.gap_positions)
     quadratic_fit = np.polyfit(energy_range, gap_positions, 2)
     np.save("gap_lookup_table.npy", quadratic_fit)
 
-    yield from centralize_pinhole()
-    yield from focus_kb_mirror_until_tolerance(params.tolerance)
+    yield from centralize_pinhole(pinhole)
+    yield from focus_kb_mirror_until_tolerance(KBMirror, pinhole, params.tolerance)
 
     print("Beamline alignment complete")

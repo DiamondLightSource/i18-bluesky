@@ -4,39 +4,19 @@ from typing import Optional
 import bluesky.plan_stubs as bps
 import numpy as np
 import sympy as sp
-from dls_bluesky_core.core import MsgGenerator, inject
 from dodal.common import MsgGenerator, inject
-from dodal.devices.aperturescatterguard import ApertureScatterguard
 from dodal.devices.undulator import Undulator
-from ophyd_async.core import StandardDetector
-from ophyd_async.epics.signal import epics_signal_rw
 
 monochromator = inject("monochromator")
 
 I0 = inject("i0")
 IT = inject("it")
-
-
-class IonChamber(StandardDetector):
-    # beamline has two ion chambers
-    pass
-
-
-t1x = IonChamber(name="t1x")
-t1y = IonChamber(name="t1y")
-t1theta = IonChamber(name="t1theta")
+t1x = inject("t1x")
+t1y = inject("t1y")
+t1theta = inject("t1theta")
 # note the theta variant is for tomography
 
-
-class KBMirror:
-    # usually moved simultaneously, but for fine focus separately
-    vertical_bend1 = epics_signal_rw()
-    vertical_bend2 = epics_signal_rw()
-    horizontal_bend1 = epics_signal_rw()
-    horizontal_bend2 = epics_signal_rw()
-
-
-pinhole = ApertureScatterguard()
+pinhole = inject("pinhole")
 
 # get the gaussian shape IT transmission detector we get the shape
 
@@ -56,7 +36,7 @@ class BeamlineAlignmentParams:
 
 
 @inject
-def align_beamline(tolerance: float) -> MsgGenerator:
+def align_beamline(KBMirror, tolerance: float) -> MsgGenerator:
     # first, we lookup table - calibratre the DCM -
     # measure foil, etc Fe, Mg, then absorption spectrum
     # then the xanes absorption - then derivative, argmax of the first derivative
@@ -85,7 +65,7 @@ def align_beamline(tolerance: float) -> MsgGenerator:
     energy_range = np.linspace(10, 15, num=10)
 
     for energy in energy_range:
-        yield from bps.mv(Undulator.gap, energy)
+        yield from bps.mv(Undulator.current_gap, energy)
         yield from bps.trigger_and_read([Undulator])
 
     gap_positions = yield from bps.rd(Undulator.gap_positions)

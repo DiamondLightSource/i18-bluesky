@@ -6,6 +6,7 @@ from typing import List
 
 import numpy as np
 import redis
+from dodal.common import inject
 from scipy.optimize import curve_fit
 
 
@@ -63,7 +64,8 @@ class Record:
 
 async def scan(undulator, diode) -> Record:
     """
-    the goal here is to make a serializable strucutre for those and some functions, alogn with algorithms
+    the goal here is to make a serializable structure
+    for those and some functions, alogn with algorithms
     this would be agnostic wrt the saving mechanism, be it redis or etcd, etc
     """
     min_val = undulator.min
@@ -113,11 +115,12 @@ harmonics = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
 # Create Redis client
 redis_client = redis.StrictRedis(host="localhost", port=6379, db=0)
 
+undulator = inject("undulator")
+diode = inject("diode")
+
 
 async def main():
     # Example setup for undulator and diode
-    undulator = ...  # Define your undulator object here
-    diode = ...  # Define your diode object here
 
     tasks = []
     for h in harmonics:
@@ -150,7 +153,8 @@ def get_quadratic_curve(redis_client, harmonic: int, element: str, edge: str):
     # Verify if the record matches the harmonic, element, and edge
     if record.harmonic != harmonic or record.element != element or record.edge != edge:
         raise ValueError(
-            f"Record does not match the specified harmonic ({harmonic}), element ({element}), or edge ({edge})"
+            f"""Record does not match the specified harmonic ({harmonic}),
+            element ({element}), or edge ({edge})"""
         )
 
     # Get the regression function
