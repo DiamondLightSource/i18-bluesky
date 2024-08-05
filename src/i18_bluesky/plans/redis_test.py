@@ -2,9 +2,9 @@ import asyncio
 from typing import Set
 
 import bluesky.plan_stubs as bps
-from blueskt.devices import TetrammDetector
 from bluesky.protocols import Readable
 from dodal.common import MsgGenerator
+from dodal.devices.tetramm import TetrammDetector
 from dodal.plans.data_session_metadata import attach_data_session_metadata_decorator
 
 from i18_bluesky.redis_client import RedisClient
