@@ -5,13 +5,16 @@ import bluesky.plan_stubs as bps
 import numpy as np
 import sympy as sp
 from dls_bluesky_core.core import MsgGenerator, inject
+from dodal.common import MsgGenerator, inject
 from dodal.devices.aperturescatterguard import ApertureScatterguard
-from dodal.devices.dcm import DCM
 from dodal.devices.undulator import Undulator
 from ophyd_async.core import StandardDetector
 from ophyd_async.epics.signal import epics_signal_rw
 
-monochromator = DCM()
+monochromator = inject("monochromator")
+
+I0 = inject("i0")
+IT = inject("it")
 
 
 class IonChamber(StandardDetector):
