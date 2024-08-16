@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import bluesky.plan_stubs as bps
+from i18_bluesky.plans.align_lookup_2 import calculate_derivative_maxima
 import numpy as np
 import sympy as sp
 from dodal.common import MsgGenerator, inject
@@ -20,22 +21,12 @@ pinhole = inject("pinhole")
 
 # get the gaussian shape IT transmission detector we get the shape
 
-
-def derivative_max(data):
-    x, y = sp.symbols("x y")
-    y = sp.Function("y")(x)
-    derivative = sp.diff(y, x)
-    argmax = sp.solve(sp.Eq(derivative, 0), x)
-    return argmax
-
-
 @dataclass
 class BeamlineAlignmentParams:
-    target_energy: Optional[float] = 12.0
-    tolerance: Optional[float] = 0.1
+    target_energy: float = 12.0
+    tolerance: float = 0.1
 
 
-@inject
 def align_beamline(KBMirror, tolerance: float) -> MsgGenerator:
     # first, we lookup table - calibratre the DCM -
     # measure foil, etc Fe, Mg, then absorption spectrum
@@ -48,7 +39,7 @@ def align_beamline(KBMirror, tolerance: float) -> MsgGenerator:
 
     yield from bps.mv(monochromator, "measure_absorption_spectrum")
     absorption_spectrum = yield from bps.rd(monochromator.absorption_spectrum)
-    energy_positions = derivative_max(absorption_spectrum)
+    energy_positions = calculate_derivative_maxima(absorption_spectrum)
 
     for position in energy_positions:
         yield from bps.mv(monochromator.bragg_offset, position)

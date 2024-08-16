@@ -14,6 +14,13 @@ KBMirror = inject("kb_mirror")
 
 
 def calculate_derivative_maxima(data: np.ndarray) -> List[float]:
+    """
+    data is array[tuple(float, float)]
+    x = motor position
+    y = transmission strength
+    todo need to pass an x argument to the function
+
+    """
     x = sp.Symbol("x")
     y = sp.interpolating_spline(3, sp.lambdify(x, data))
     derivative = y.diff(x)
@@ -39,8 +46,9 @@ def adjust_bragg_offset_using_absorption_spectrum(
     absorption_spectrum: np.ndarray,
 ) -> MsgGenerator:
     energy_positions = calculate_derivative_maxima(absorption_spectrum)
-    for position in energy_positions:
-        yield from bps.mv(monochromator.bragg_in_degrees, position)
+    # todo return the max
+    max_energy_position = max(energy_positions)
+    yield from bps.mv(monochromator.bragg_in_degrees, max_energy_position)
 
 
 def scan_undulator_gap_within_energy_range(
@@ -101,6 +109,7 @@ def focus_kb_mirror_until_tolerance(
     yield from bps.mv(pinhole, "final_position")
 
 
+# todo multiple types of alignment were mixed in this plan and the plans above
 def align_beamline(
     undulator, monochromator, params: BeamlineAlignmentParams
 ) -> MsgGenerator:
