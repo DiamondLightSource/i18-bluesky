@@ -1,5 +1,6 @@
 
 # alignment plan overview
+
 sample stages T1X
 T1Y
 
@@ -46,3 +47,27 @@ get the gaussian shape IT transmission detector we get the shape
     or 50 micron beam - and then defocus to get to that
 
     golden plate with wires is moved by some other location
+
+## Alignment types
+
+There are three major types of alignment:
+
+- idgap
+- pinhole
+- wire scan
+
+Other alignment (non exhaustive):
+
+- KB mirror optimization (?)
+
+Only the idgap one caches the results in a lookup table.
+
+### IDGAP alignment details
+
+moving the monochromator to a given Bragg angle, keeping it fixed and then scanning the undulator gap across a small range.
+
+On the d7 diode the Bragg with a peak is that gap
+
+2d scan of Bragg angle vs undulator gap, and peak compared to d7
+
+### pinhole

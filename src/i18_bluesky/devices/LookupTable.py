@@ -25,14 +25,3 @@ class LookupTable(StandardReadable, Movable):
         await self._desired_transmission.set(transmission)
         LOGGER.debug("Sending change filter command")
         await self._change.trigger()
-
-        await asyncio.gather(
-            *[
-                wait_for_value(
-                    self._filters_in_position[i],
-                    await self._calculated_filter_states[i].get_value(),
-                    None,
-                )
-                for i in range(16)
-            ]
-        )

@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 import bluesky.plan_stubs as bps
-from i18_bluesky.plans.align_lookup_2 import calculate_derivative_maxima
 import numpy as np
 import sympy as sp
 from dodal.common import MsgGenerator, inject
 from dodal.devices.undulator import Undulator
+
+from i18_bluesky.plans.align_lookup_2 import calculate_derivative_maxima
 
 monochromator = inject("monochromator")
 

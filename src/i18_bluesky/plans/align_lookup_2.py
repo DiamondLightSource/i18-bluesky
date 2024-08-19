@@ -29,7 +29,7 @@ def calculate_derivative_maxima(data: np.ndarray) -> List[float]:
 
 
 @dataclass
-class BeamlineAlignmentParams:
+class IdGapAlignmentStatus:
     target_energy: Optional[float] = 12.0
     tolerance: Optional[float] = 0.1
 
@@ -111,7 +111,7 @@ def focus_kb_mirror_until_tolerance(
 
 # todo multiple types of alignment were mixed in this plan and the plans above
 def align_beamline(
-    undulator, monochromator, params: BeamlineAlignmentParams
+    undulator, monochromator, params: IdGapAlignmentStatus
 ) -> MsgGenerator:
     yield from calibrate_monochromator(monochromator)
 

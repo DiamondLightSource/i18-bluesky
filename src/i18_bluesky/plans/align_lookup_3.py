@@ -16,7 +16,7 @@ def gaussian(x, amp, mean, sigma):
 
 
 @dataclass
-class Measurement:
+class IdGapMeasurement:
     bragg: float
     gap: float
 
@@ -29,7 +29,7 @@ class Record:
     detector: str
     comment: str
     harmonic: int
-    measurements: List[Measurement] = field(default_factory=list)
+    measurements: List[IdGapMeasurement] = field(default_factory=list)
 
     def to_json(self):
         return json.dumps(asdict(self), default=str, indent=4)
@@ -39,7 +39,7 @@ class Record:
         data_dict = json.loads(data)
         data_dict["date"] = datetime.fromisoformat(data_dict["date"])
         data_dict["harmonic"] = int(data_dict["harmonic"])
-        measurements = [Measurement(**m) for m in data_dict["measurements"]]
+        measurements = [IdGapMeasurement(**m) for m in data_dict["measurements"]]
         return cls(**data_dict, measurements=measurements)
 
     def quadratic_regression(self):
@@ -103,7 +103,7 @@ async def scan(undulator, diode) -> Record:
         detector="Diode",
         comment="Measurement at peak diode value",
         harmonic=undulator.harmonic,
-        measurements=[Measurement(peak_bragg, max(gap_array))],
+        measurements=[IdGapMeasurement(peak_bragg, max(gap_array))],
     )
 
     return record
