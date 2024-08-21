@@ -1,2 +1,0 @@
-S1Xpos SESO_x SESO_y
--2.29 0.0
