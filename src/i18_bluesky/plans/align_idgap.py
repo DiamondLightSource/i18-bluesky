@@ -1,8 +1,8 @@
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 import bluesky.plan_stubs as bps
 import mendeleev as pt
@@ -14,45 +14,10 @@ from scipy import curve_fit
 
 UNDULATOR = inject("undulator")
 DCM = inject("monochromator")
+DIODE = inject("diode")
 
-harmonics = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
+harmonics = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
 # https://www.cyberphysics.co.uk/topics/light/A_level/difraction.htm
-
-
-@dataclass
-class IdGapAlignmentStatus:
-    target_energy: Optional[float] = 12.0
-    tolerance: Optional[float] = 0.1
-
-
-def align_idgap(
-    harmonic: int = 1,
-    undulator: Undulator = UNDULATOR,
-    monochromator: Monochromator = DCM,
-) -> MsgGenerator:
-    """
-    Bragg angle motor
-
-    """
-
-    gap = yield from bps.rd(undulator.current_gap)
-
-    # second the idgap lookup tables -
-    # for 10-15 points inside the energy range for this element
-    # we scan the gap fo the insertion devise, looking for the maximum
-    # then quadratic interpolation
-    # written into the file, then GDA probably some interpolation
-    # TFG calculates frequency from current via voltage
-    # so we need to load the panda configuration
-    energy_range = np.linspace(10, 15, num=10)
-    gap_positions = yield from bps.rd(Undulator.gap_positions)
-    quadratic_fit: np.ndarray[float] = np.polyfit(energy_range, gap_positions, 2)
-    np.save("gap_lookup_table.npy", quadratic_fit)
-
-
-# Define a Gaussian function for fitting
-def gaussian(x, amp, mean, sigma):
-    return amp * np.exp(-((x - mean) ** 2) / (2 * sigma**2))
 
 
 @dataclass
@@ -102,6 +67,59 @@ class IdGapLookupRecord:
         return regression_function
 
 
+# todo need to hardcode the relationship between element and harmonic
+
+element_harmonics_edges = {
+    "Mo": {"harmonics": [19], "edges": ["K", "L1", "L2", "L3"]},
+    # all is guesswork
+    "Ga": {"harmonics": [13], "edges": ["K"]},
+}
+
+
+@dataclass
+class IdGapAlignmentStatus:
+    target_energy: Optional[float] = 12.0
+    tolerance: Optional[float] = 0.1
+
+
+# Define a Gaussian function for fitting
+def gaussian(x, amp, mean, sigma):
+    return amp * np.exp(-((x - mean) ** 2) / (2 * sigma**2))
+
+
+def align_idgap(
+    element: str = "Ga",
+    harmonic: int = 1,
+    undulator: Undulator = UNDULATOR,
+    monochromator: Monochromator = DCM,
+    diode=DIODE,
+) -> MsgGenerator:
+    # todo first assert that the element is in the lookup table
+    # todo then assert that the harmonic is in the lookup table for that element
+    # todo then assert that the edge is in the lookup table for that element
+
+    # todo prep step
+    # todo scanning step
+
+    # todo analytical step
+    # todo cleanup step
+    # todo caching step
+
+    gap = yield from bps.rd(undulator.current_gap)
+
+    # second the idgap lookup tables -
+    # for 10-15 points inside the energy range for this element
+    # we scan the gap fo the insertion devise, looking for the maximum
+    # then quadratic interpolation
+    # written into the file, then GDA probably some interpolation
+    # TFG calculates frequency from current via voltage
+    # so we need to load the panda configuration
+    energy_range = np.linspace(10, 15, num=10)
+    gap_positions = yield from bps.rd(Undulator.gap_positions)
+    quadratic_fit: np.ndarray[float] = np.polyfit(energy_range, gap_positions, 2)
+    np.save("gap_lookup_table.npy", quadratic_fit)
+
+
 async def scan(undulator, diode, lookup_table) -> MsgGenerator:
     """
     the goal here is to make a serializable structure
@@ -149,8 +167,9 @@ async def scan(undulator, diode, lookup_table) -> MsgGenerator:
     lookup_table.save(record)
 
 
-async def main_alignment_idgap_plan(undulator, diode, lookup_table) -> MsgGenerator:
+async def align_gaps_at_run_start(undulator, diode, lookup_table) -> MsgGenerator:
     tasks = []
+    # todo iterate over elements in the dictionary instead
     for h in harmonics:
         undulator.harmonic = h
         undulator.element = "Si"  # Example, set this appropriately
@@ -159,4 +178,5 @@ async def main_alignment_idgap_plan(undulator, diode, lookup_table) -> MsgGenera
         tasks.append(asyncio.create_task(scan(undulator, diode)))
 
     records = await asyncio.gather(*tasks)
+    # todo move all the caching to each call
     lookup_table.save(records)
