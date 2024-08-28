@@ -12,7 +12,13 @@ harmonics rise monotonically with Z atomic number. Still
 
 XFAS community uses eV for initial energy and inverse angsotmr sfor final energy
 
+energies for each element are stable for 200 years and often scanned with a 10% margin of errror to read more
 
+Mo hightest energy so at the highest harmonic - 19
+
+<https://docs.scipy.org/doc/scipy/reference/constants.html>
+
+usually 1 element has one edge
 
 ## physical description
 
@@ -37,3 +43,12 @@ idgap(undulator)- beam -> Monochromator (Bragg angle) - beam -> diode d7 (readou
 
 - move d7 filter a back into 'gap' mode
 - move d7 filter b back into 'gap' mode
+
+## Common issues
+
+sources of issues when running manually:
+
+- saturation
+- if the original idgap is so far out of the scan
+
+usually takes 10 minutes, so for 19 harmonics 3 hours?

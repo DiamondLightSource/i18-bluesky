@@ -17,5 +17,5 @@ PINHOLE = inject("pinhole")
 # to minimuze the beam size until it changes
 # to see the beam shape and the size
 # takes usually 30 minutes to go through focusing manually, 2-3 hours
-async def align_pinhole(pinhole: Pinhole = PINHOLE) -> MsgGenerator:
+async def align_pinhole(pinhole=PINHOLE) -> MsgGenerator:
     pass

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 import bluesky.plan_stubs as bps
+import mendeleev as pt
 import numpy as np
 from bluesky.devices.monochromator import DCM as Monochromator
 from dodal.common import MsgGenerator, inject
@@ -15,6 +16,7 @@ UNDULATOR = inject("undulator")
 DCM = inject("monochromator")
 
 harmonics = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
+# https://www.cyberphysics.co.uk/topics/light/A_level/difraction.htm
 
 
 @dataclass
@@ -34,7 +36,6 @@ def align_idgap(
     """
 
     gap = yield from bps.rd(undulator.current_gap)
-    monochromator.bragg_in_degrees
 
     # second the idgap lookup tables -
     # for 10-15 points inside the energy range for this element
