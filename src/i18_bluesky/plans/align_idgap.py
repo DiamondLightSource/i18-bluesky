@@ -1,11 +1,10 @@
 import asyncio
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 import bluesky.plan_stubs as bps
-import mendeleev as pt
 import numpy as np
 from bluesky.devices.monochromator import DCM as Monochromator
 from dodal.common import MsgGenerator, inject
@@ -16,15 +15,6 @@ UNDULATOR = inject("undulator")
 DCM = inject("monochromator")
 DIODE = inject("diode")
 
-harmonics = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
-# https://www.cyberphysics.co.uk/topics/light/A_level/difraction.htm
-
-
-@dataclass
-class IdGapMeasurement:
-    bragg: float
-    gap: float
-
 
 @dataclass
 class IdGapLookupRecord:
@@ -34,7 +24,7 @@ class IdGapLookupRecord:
     detector: str
     comment: str
     harmonic: int
-    measurements: List[IdGapMeasurement] = field(default_factory=list)
+    measurements: np.ndarray = np.array([])
 
     def to_json(self):
         return json.dumps(asdict(self), default=str, indent=4)
@@ -44,7 +34,8 @@ class IdGapLookupRecord:
         data_dict = json.loads(data)
         data_dict["date"] = datetime.fromisoformat(data_dict["date"])
         data_dict["harmonic"] = int(data_dict["harmonic"])
-        measurements = [IdGapMeasurement(**m) for m in data_dict["measurements"]]
+        # todo fix unpacking a numpy array
+        measurements = data_dict["measurements"]
         return cls(**data_dict, measurements=measurements)
 
     def quadratic_regression(self):
@@ -70,8 +61,13 @@ class IdGapLookupRecord:
 # todo need to hardcode the relationship between element and harmonic
 
 element_harmonics_edges = {
-    "Mo": {"harmonics": [19], "edges": ["K", "L1", "L2", "L3"]},
-    # all is guesswork
+    "Mo": {
+        "harmonics": [19],
+        "edges": ["K", "L1", "L2", "L3"],
+        "starting_energy_eV": 17,
+        "ending_energy_inverse_angstorm": 25,
+    },
+    # Ga values are guesswork at the moment
     "Ga": {"harmonics": [13], "edges": ["K"]},
 }
 
@@ -89,71 +85,48 @@ def gaussian(x, amp, mean, sigma):
 
 def align_idgap(
     element: str = "Ga",
-    harmonic: int = 1,
+    edge: str = "K",
+    harmonic: int | None = None,
     undulator: Undulator = UNDULATOR,
     monochromator: Monochromator = DCM,
     diode=DIODE,
 ) -> MsgGenerator:
-    # todo first assert that the element is in the lookup table
-    # todo then assert that the harmonic is in the lookup table for that element
-    # todo then assert that the edge is in the lookup table for that element
+    assert element in element_harmonics_edges, "element not supported"
+    if harmonic is not None:
+        harmonic = element_harmonics_edges[element]["harmonics"][0]
+    else:
+        assert (
+            harmonic in element_harmonics_edges[element]["harmonics"]
+        ), "element is ok, harmonic not supported"
+    assert edge in element_harmonics_edges[element]["edges"], "edge not supported"
 
-    # todo prep step
-    # todo scanning step
+    # todo saving for reference
+    initial_gap = yield from bps.rd(undulator.current_gap)
 
-    # todo analytical step
-    # todo cleanup step
-    # todo caching step
-
-    gap = yield from bps.rd(undulator.current_gap)
-
-    # second the idgap lookup tables -
-    # for 10-15 points inside the energy range for this element
-    # we scan the gap fo the insertion devise, looking for the maximum
-    # then quadratic interpolation
-    # written into the file, then GDA probably some interpolation
-    # TFG calculates frequency from current via voltage
-    # so we need to load the panda configuration
-    energy_range = np.linspace(10, 15, num=10)
-    gap_positions = yield from bps.rd(Undulator.gap_positions)
-    quadratic_fit: np.ndarray[float] = np.polyfit(energy_range, gap_positions, 2)
-    np.save("gap_lookup_table.npy", quadratic_fit)
-
-
-async def scan(undulator, diode, lookup_table) -> MsgGenerator:
-    """
-    the goal here is to make a serializable structure
-    for those and some functions, alogn with algorithms
-    this would be agnostic wrt the saving mechanism, be it redis or etcd, etc
-    """
     min_val = undulator.min
     max_val = undulator.max
     bragg_values = []
     gap_values = []
+    intensity_values = []
 
+    # todo start looking around the previous value
     for i in range(10):
         # todo not sure about the offsets
         bragg = min_val + i * (max_val - min_val) / 10
-        await undulator.set_bragg(bragg)  # Assume set_bragg is an async function
-        gap = await diode.read()  # Assume read is an async function
+        yield from monochromator.set_bragg(
+            bragg
+        )  # Assume set_bragg is an async function
+        gap = yield from bps.rd(undulator.current_gap)
+        intensity = yield from bps.read(diode)  # Assume read is an async function
         bragg_values.append(bragg)
         gap_values.append(gap)
+        intensity_values.append(intensity)
 
     bragg_array = np.array(bragg_values)
     gap_array = np.array(gap_values)
+    intensity_array = np.array(intensity_values)
 
-    try:
-        popt, _ = curve_fit(
-            gaussian,
-            bragg_array,
-            gap_array,
-            p0=[max(gap_array), bragg_array[np.argmax(gap_array)], 1],
-        )
-        peak_bragg = popt[1]
-    except Exception as e:
-        print(f"Gaussian fitting failed: {e}")
-        peak_bragg = bragg_array[np.argmax(gap_array)]
-
+    # todo correlate to the Monochromator crystal metadata
     record = IdGapLookupRecord(
         element=undulator.element,
         edge=undulator.edge,
@@ -161,22 +134,40 @@ async def scan(undulator, diode, lookup_table) -> MsgGenerator:
         detector="Diode",
         comment="Measurement at peak diode value",
         harmonic=undulator.harmonic,
-        measurements=[IdGapMeasurement(peak_bragg, max(gap_array))],
+        measurements=[bragg_array, gap_array, intensity_array],
     )
 
-    lookup_table.save(record)
+    # todo not sure maybe save into the monochromator instead
+    undulator.save(record)
 
 
-async def align_gaps_at_run_start(undulator, diode, lookup_table) -> MsgGenerator:
+# harmonics partial explanation https://www.cyberphysics.co.uk/topics/light/A_level/difraction.htm
+
+
+async def align_gaps_for_all_elements_at_run_start(
+    undulator: Undulator = UNDULATOR, diode=DIODE
+) -> MsgGenerator:
     tasks = []
-    # todo iterate over elements in the dictionary instead
-    for h in harmonics:
-        undulator.harmonic = h
-        undulator.element = "Si"  # Example, set this appropriately
-        undulator.edge = "K"  # Example, set this appropriately
-
-        tasks.append(asyncio.create_task(scan(undulator, diode)))
+    for element in element_harmonics_edges:
+        for edge in element_harmonics_edges[element]["edges"]:
+            for harmonic in element_harmonics_edges[element]["harmonics"]:
+                tasks.append(
+                    asyncio.create_task(
+                        align_idgap(element, edge, harmonic, undulator, diode)
+                    )
+                )
 
     records = await asyncio.gather(*tasks)
-    # todo move all the caching to each call
-    lookup_table.save(records)
+    undulator.save(records)
+
+
+def prep_beamline_for_alignment(diode=DIODE):
+    # todo no idea what is the correct method
+    yield from bps.mv(diode.filter_b.mode, "in line diode")
+    diode_saturation = yield from bps.read(diode.current)
+    MIN = 2
+    BEST = 18
+    MAX = 20
+    # todo change filter a size until it's near best
+    # todo need the diode device with a sensible list of apertures
+    yield from bps.mv(diode.filter_a.size, 5)

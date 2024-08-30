@@ -112,6 +112,7 @@ if __name__ == "__main__":
     # Example data generation
     n_x, n_y, n_z = 10, 10, 5
     data = np.random.random((n_x, n_y, n_z))
+    print(data)
 
     # Step 1: Find the (x, y) pairs based on peak, Gaussian center of mass, and integral center of mass
     peak_xy_pairs = find_peak_xy_pairs(data)
