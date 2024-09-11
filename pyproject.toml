@@ -12,7 +12,7 @@ classifiers = [
 ]
 description = "Plans and devices for the DLS beamline i18"
 dependencies = [
-    "dls_dodal @ git+https://github.com/DiamondLightSource/dodal",
+    "dls_dodal @ git+https://github.com/DiamondLightSource/dodal@add-i18",
     "dls_bluesky_core",
     "ophyd_async",
     "numpy<2.0.0",
