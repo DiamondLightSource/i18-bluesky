@@ -24,5 +24,5 @@ def grid_scan_diode(
     table: Table = TABLE,
 ) -> MsgGenerator:
     yield from bp.grid_scan(
-        [diode], table, x_start, x_stop, x_steps, y_start, y_stop, y_steps
+        [diode], table.x, x_start, x_stop, x_steps,table.y y_start, y_stop, y_steps
     )
