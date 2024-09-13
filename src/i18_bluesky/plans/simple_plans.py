@@ -3,7 +3,7 @@ from typing import Any, List, Mapping, Optional
 import bluesky.plans as bp
 from dls_bluesky_core.core import MsgGenerator
 from ophyd_async.core.detector import StandardDetector
-from ophyd_async.epics.motion import Motor
+from ophyd_async.epics.motor import Motor
 
 """
 Dictionary of scan arguments from motor scan_args (start, stop, steps)
