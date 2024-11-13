@@ -7,9 +7,11 @@ env:
     #- kind: deviceFunctions
     #  module: beamline_devices 
     - kind: deviceFunctions
-      module: devices.sim_motor_devices 
-    - kind: deviceFunctions
-      module: devices.sim_epics_devices
+      module: dodal.beamlines.i18_offline
+    #- kind: deviceFunctions
+    #  module: devices.sim_motor_devices
+    #- kind: deviceFunctions
+    #  module: devices.sim_epics_devices
     - kind: planFunctions
       module: plans.simple_plans
 
