@@ -1,18 +1,15 @@
 env:
   sources:
-    #- kind: planFunctions
-    #  module: dls_bluesky_core.plans
-    #- kind: planFunctions
-    #  module: dls_bluesky_core.stubs
     #- kind: deviceFunctions
-    #  module: beamline_devices 
+    #  module: beamline_devices
+    # - kind: dodal
+    #   module: dodal.adsim
     - kind: deviceFunctions
-      module: devices.sim_motor_devices 
+      module: devices.sim_motor_devices
     - kind: deviceFunctions
       module: devices.sim_epics_devices
     - kind: planFunctions
       module: plans.simple_plans
-
 stomp:
   host: localhost
   port: 61613
@@ -21,7 +18,3 @@ logging:
 api:
   host: localhost
   port: 8001
-
-
-   # - kind: dodal
-   #   module: dodal.adsim
