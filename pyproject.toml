@@ -9,14 +9,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 description = "Plans and devices for the DLS beamline i18"
-dependencies = [
-    "dls_dodal @ git+https://github.com/DiamondLightSource/dodal",
-    "dls_bluesky_core",
-    "ophyd_async",
-    "numpy<2.0.0",
-] # Add project dependencies here, e.g. ["click", "numpy"]
+# Add project dependencies here, e.g. ["click", "numpy"]
+dependencies = [ 
+    "dls_dodal>=1.36",
+] 
 dynamic = ["version"]
 license.file = "LICENSE"
 readme = "README.md"

@@ -1,4 +1,4 @@
-from dls_bluesky_core.core import MsgGenerator
+from bluesky.utils import MsgGenerator
 
 # sample stages T1X
 # T1Y
