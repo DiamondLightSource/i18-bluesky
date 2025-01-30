@@ -100,6 +100,13 @@ class FitCurves(CollectThenCompute):
             self.results.append([param, cov])
 
 
+class FitCurvesMaxValue(FitCurves):
+    def do_fitting(self, xvals, yvals):
+        #Find the peak value
+        peak_index = yvals.index(max(yvals))
+        return [[xvals[peak_index]], None]
+
+
 
 # Return value from quadratic curve : y = a + b*x * c*(x**2)
 def quadratic(x, a, b, c) :
@@ -113,7 +120,7 @@ def fit_quadratic_curve(data_results, show_plot=False, bounds=None, default_boun
     :param show_plot: optional - show fit results and original data on plot (default = False)
     :param bounds:  optional tuple containing bounds for each parameter of the trial_quadratic function e.g. ( (0,0,0), (10,10,10))
     :param trial_quadratic : optional quadratic function to be used for fitting (default = 'quadratic')
-    :return:
+    :return: fit params, covariance matrix
     """
     ### All done - now extract undulator value for peak signal at each Bragg angle
 

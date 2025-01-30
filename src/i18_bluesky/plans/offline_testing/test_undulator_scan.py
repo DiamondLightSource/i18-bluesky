@@ -1,96 +1,42 @@
-import asyncio
-import math
 import os
 
+
+# os.environ['EPICS_CA_SERVER_PORT'] = "6064"  # set the Epics port before other imports, otherwise wrong value is picked up (5054)
+
+import asyncio
+import time
 from bluesky import RunEngine
 from bluesky.callbacks.best_effort import BestEffortCallback
-from i18_bluesky.plans.curve_fitting import fit_quadratic_curve, quadratic
+from bluesky.plans import scan
 from ophyd import EpicsMotor, EpicsSignalRO
 from ophyd.sim import SynGauss, SynAxis
 from ophyd_async.epics.motor import Motor
+from databroker import Header
+from databroker import Broker
+from dataclasses import dataclass
+from i18_bluesky.plans.lookup_tables import fit_lookuptable_curve, generate_new_ascii_lookuptable
+from i18_bluesky.plans.undulator_lookuptable_plan import undulator_lookuptable_scan
+
+import sys
 
 
-# os.environ['EPICS_CA_SERVER_PORT'] = "6064" # set the Epics port before other imports, otherwise wrong value is picked up (5054)
-
-
-def load_ascii_lookuptable(filename, lines_to_skip=0):
+def save_scan_data_ascii_file(header: Header, file_path, file_name_format="scan_%d.txt", float_format="%.4f", include_index=True):
     """
-    Load 2-colummn x,y Ascii data from file and convert to numbers (optionally skipping the first few lines)
-
-    :param filename:
-    :param lines_to_skip how many lines to skip before storing the data
-    :return: dictionary containing the value on each line { x1:y1, x2:y2 ...}
-
+        Save results from running bluesky plan to Ascii file
+        Columns are motor positions, followed by detector readouts
     """
-    print("Loading ascii lookup table from {}".format(filename))
-    with open(filename, "r") as f:
-        for i in range(lines_to_skip):
-            f.readline()
+    scan_id = header.start.scan_id
+    columns = (*header.start.motors, *header.start.detectors)
+    full_name = file_path + "/" + file_name_format % (scan_id)
+    print("Saving data to {}\nColumns : {}".format(full_name, columns))
+    header.table().to_csv(full_name, sep="\t", columns=columns, float_format=float_format, index=include_index)
 
-        number_vals = {}
-        for val in f:
-            number_val = [float(s) for s in val.split()]
-            number_vals[number_val[0]] = number_val[1]
+class EpicsSignalROWithWait(EpicsSignalRO):
+    sleep_time_secs: float = 0.0
 
-        return number_vals
-
-
-def lookup_value(y_search, func, range_min=0, range_max=100, tolerance=1e-6, max_iters=20):
-    """
-        Lookup x value for a curve y(x), such that y_search = y(x)
-        Uses interval bisection to reach desired accuracy tolerance, up to maxiumum number of iterations
-
-    """
-
-    def eval_func(x_pos):
-        return x_pos, func(x_pos)
-
-    def in_range(v, v1, v2):
-        return min(v1, v2) < v < max(v1, v2)
-
-    # evaluate func at lower and upper x bounds :
-    lower = eval_func(range_min)
-    upper = eval_func(range_max)
-
-    iter_num = 0
-
-    best_y = y_search + 100
-
-    while iter_num < max_iters and math.fabs(best_y - y_search) > tolerance:
-        # evaluate function at midpoint
-        mid = eval_func((lower[0] + upper[0]) / 2.0)
-
-        # update upper, lower bound depending on midpoint y value relative to y_search
-        if in_range(y_search, lower[1], mid[1]):
-            upper = mid
-        else:
-            lower = mid
-        best_y = (lower[1] + upper[1]) / 2.0
-        iter_num += 1
-        # print(lower, upper)
-
-    # return best x value
-    return (lower[0] + upper[0]) / 2.0
-
-
-def fit_harmonic_lookuptable_curve(filename, **kwargs):
-    """Load undulator gap lookup table from Ascii file and fit quadratic curve to undlator gap vs Bragg angle
-
-    :param filename:
-    :param kwargs:
-    :return: function that returns undulator gap for a given Bragg angle
-    """
-
-    vals = load_ascii_lookuptable(filename, lines_to_skip=2)
-    params, cov = fit_quadratic_curve(vals, **kwargs)
-
-    def best_undulator_gap(angle):
-        return quadratic(angle, *params)
-
-    def gradient(angle):
-        return params[1] + params[2] * bragg_angle
-
-    return best_undulator_gap, gradient
+    def read(self):
+        time.sleep(self.sleep_time_secs)
+        return super().read()
 
 
 class UndulatorCurve(SynGauss):
@@ -109,18 +55,19 @@ class UndulatorCurve(SynGauss):
 
 filename = "lookuptable_harmonic1.txt"
 beamline_lookuptable_dir = "/dls_sw/i18/software/gda_versions/gda_9_36/workspace_git/gda-diamond.git/configurations/i18-config/lookupTables/"
-filename = beamline_lookuptable_dir + "Si111/lookuptable_harmonic9.txt"
+# filename = beamline_lookuptable_dir + "Si111/lookuptable_harmonic9.txt"
+filename = beamline_lookuptable_dir + "Si111/lookuptable_harmonic7.txt"
 
 # load lookuptable from ascii file and fit quadratic curve
-undulator_gap, bragg_angle = fit_harmonic_lookuptable_curve(filename, show_plot=False)
+undulator_gap_value = fit_lookuptable_curve(filename, show_plot=False)
+
+use_epics_motors = True
+beamline = True
 
 pv_prefix = "ws416-"
-use_epics_motors = False
-beamline = False
-
 bragg_pv_name = "BL18I-MO-DCM-01:BRAGG" if beamline else pv_prefix + "MO-SIM-01:M1"
 undulator_gap_pv_name = "SR18I-MO-SERVC-01:BLGAPMTR" if beamline else pv_prefix + "MO-SIM-01:M2"
-
+energy_motor_pv_name = "BL18I-MO-DCM-01:ENERGY" if beamline else pv_prefix + "MO-SIM-01:M3"
 
 def make_epics_motor(*args, **kwargs):
     mot = EpicsMotor(*args, **kwargs)
@@ -139,7 +86,10 @@ if beamline:
 
     bragg_motor = make_epics_motor(bragg_pv_name, name="bragg_angle")
     undulator_gap_motor = make_epics_motor(undulator_gap_pv_name, name="undulator_gap_motor")
-    d7diode = EpicsSignalRO("BL18I-DI-PHDGN-07:B:DIODE:I", name="d7diode")
+    energy_motor = make_epics_motor(energy_motor_pv_name, name="energy_motor")
+    # d7diode = EpicsSignalRO("BL18I-DI-PHDGN-07:B:DIODE:I", name="d7diode")
+    d7diode = EpicsSignalROWithWait("BL18I-DI-PHDGN-07:B:DIODE:I", name="d7diode")
+    d7diode.sleep_time_secs = 0.5
 else:
     if use_epics_motors:
         bragg_motor = make_epics_motor(bragg_pv_name, name="bragg_angle")
@@ -159,9 +109,9 @@ else:
                              Imax=1)
     # peak of the intensity depends on position of bragg_motor, and peak position from quadratic curve 'undulator_gap'
     # i.e. peak_position = undulator_gap(bragg_motor.position)
-    d7diode.peak_position_function = undulator_gap
+    d7diode.peak_position_function = undulator_gap_value
     d7diode.bragg_motor = bragg_motor
-    d7diode.sigma.put(0.006)
+    d7diode.sigma.put(0.01)
     d7diode.trigger()
     d7diode.precision = 5
 
@@ -170,88 +120,54 @@ else:
 # bragg_step = 0.3
 # bragg_num_steps = 20
 
-bragg_start = 11.4
-bragg_step = 0.3
-bragg_num_steps = 5
-# gap_range = 0.06
+import math
+si_d_spacing = 5.4310205
+def bragg_to_energy(bragg_angle) :
+    si_d_spacing*2*math.sin(bragg_angle*math.pi/180.0)
+
+#bragg_start = 11.4; bragg_step = 0.3; bragg_num_steps = 7
+#bragg_start = 12.3; bragg_step = 0.3; bragg_num_steps = 4
+#30jan2025
+# bragg_start = 14.2; bragg_step = 0.5; bragg_num_steps = 5
+bragg_start = 17.4; bragg_step = 0.5; bragg_num_steps = 14
 
 # Undulator range : lookup undulator values for Bragg start position and range
-gap_start = undulator_gap(bragg_start)
-gap_end = undulator_gap(bragg_start - bragg_step)
+gap_start = undulator_gap_value(bragg_start)
+gap_end = undulator_gap_value(bragg_start - bragg_step)
+# gap_range = 2.5 * (gap_end - gap_start)  # double, to make sure don't miss the peak
 gap_range = 2.5 * (gap_end - gap_start)  # double, to make sure don't miss the peak
 
-gap_start = undulator_gap(bragg_start) - 0.5 * gap_range
+# gap range and gap offset could be dynamic (computed from scan during scan)
+gap_start = undulator_gap_value(bragg_start) - 0.5 * gap_range
 
-print("Gap for start Bragg=%.3f : %.4f\nGap start, range, end : %.4f, %.4f, %.4f"
-      % (bragg_start, undulator_gap(bragg_start), gap_start, gap_range, gap_start + gap_range))
+print("Bragg angle range : start = %.4f, step = %.4f, num steps = %d"%(bragg_start, bragg_step, bragg_num_steps))
+print("Gap start, range, end : %.4f, %.4f, %.4f"%(gap_start, gap_range, gap_start + gap_range))
+
 
 bec = BestEffortCallback()
 RE = RunEngine()
 RE.subscribe(bec)
 
-from databroker import Broker
-
-db = Broker.named('temp')  # only works if name is 'temp' !
-# Insert all metadata/data captured into db.
+db = Broker.named('temp')
 RE.subscribe(db.insert)
 
-from bluesky.plans import scan
 
-import pandas as pd
+# quadratic curve fit parameters are placed in this list
+fit_results = []
 
-# df = pd.DataFrame({'diode': [], 'gap_motor': [], 'gap_setpoint': []})
-
-from dataclasses import dataclass
-
-
-@dataclass
-class DiodeEvent:
-    diode_readout: float
-    gap_motor: float
-    motor_setpoint: float
-
-
-# vals_dict = {}
-events: list[DiodeEvent] = []
-
-
-def print_data(name, doc):
-    # for k,v in doc["data"] :
-    #     if k not in vals_dict.keys() :
-    #         vals_dict[k]=[]
-    #     k.append(v)
-    #
-    #     current_val = vals_dict[k]
-    data = doc['data']
-    de = DiodeEvent(diode_readout=data['d7diode'], gap_motor=data['undulator_gap_motor'],
-                    motor_setpoint=data['undulator_gap_motor_setpoint'])
-    events.append(de)
-
-    print("Measured: %s" % doc)
-
-
-def finalize_listening(name, doc):
-    print("finishgin listening")
-    df = pd.DataFrame(events)
-    df.to_csv("tmp-out.csv", sep=" ", index=False)
-
-
-"""
-Measured: {'uid': 'b036e282-1a6f-4748-b8d4-631d12c875de', 'time': 1731507373.899197, 'data': {'d7diode': 0.0, 'undulator_gap_motor': 7.2, 'undulator_gap_motor_setpoint': 7.2}, 'timestamps': {'d7diode': 1731507373.890566, 'undulator_gap_motor': 1731507373.88739, 'undulator_gap_motor_setpoint': 1731507373.8760188}, 'seq_num': 41, 'filled': {}, 'descriptor': '0a8095a4-2c27-4239-9632-1619aa55f798'}
-
-"""
-""""""
-RE(scan([d7diode], undulator_gap_motor, 6.8, 7.2, 41), {'event': print_data, 'stop': finalize_listening})
-
-"""
-RE(scan([d7diode], undulator_gap_motor, gap_start, gap_start+gap_range, 41))
-"""
-
-"""
+base_dir="/dls/science/users/ewz97849/bluesky-install/i18-github/i18-bluesky/src/i18_bluesky/plans/offline_testing/"
+# sys.exit()
 
 RE(undulator_lookuptable_scan(bragg_start, -bragg_step, bragg_num_steps,
                               gap_start, gap_range, 0.01,
                               bragg_motor, undulator_gap_motor, d7diode,
                               gap_offset=0.0, use_last_peak=True,
-                              show_plot=True))
-"""
+                              show_plot=False, fit_parameters=fit_results,
+                              output_file=base_dir+"/bl_scan_data_large_range.txt"))
+
+# Generate new lookup table from fit results
+bragg_end = bragg_start - bragg_step*bragg_num_steps
+bragg_step = 0.01
+generate_new_ascii_lookuptable(base_dir+"bl_table_large_range.txt", fit_results, bragg_start, bragg_end, bragg_step)
+
+
